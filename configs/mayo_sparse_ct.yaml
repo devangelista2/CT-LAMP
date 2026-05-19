@@ -1,0 +1,100 @@
+experiment:
+  name: "ct_lamp_mayo_sparse_ct"
+
+data:
+  source: "mayo"
+  root_dir: "../data/Mayo"
+  split: "test"
+  image_size: 256
+  num_images: 8
+  start_idx: 0
+  num_channels: 1
+
+operator:
+  # noise_sigma is in raw CT sinogram units after applying K to [0, 1] images.
+  num_angles: 60
+  det_count: 512
+  noise_sigma: 0.01
+
+sampling:
+  num_steps: 50
+
+sirt:
+  num_iters: 300
+
+score_sde:
+  num_steps: 50
+  corrector_steps: 0
+  snr: 0.15
+  guidance_scale: 10.0
+  grad_clip: 50.0
+  smart_init: true
+
+mcg:
+  num_steps: 50
+  corrector_steps: 0
+  snr: 0.15
+  kaczmarz_start: 10.0
+  kaczmarz_end: 10.0
+  manifold_weight: 0.001
+  grad_clip: 50.0
+  smart_init: true
+
+ddnm_plus:
+  num_steps: 50
+  eta_scale: 15.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  cg_early_stop: false
+  smart_init: false
+  consistency_solver: "cg"
+  fbp_relaxation: 1.0
+
+ct_lamp:
+  num_steps: 50
+  eta_scale: 15.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  cg_early_stop: false
+  warmup_steps: 0
+  # gamma: -8.0
+  beta_schedule:
+    kind: "expression"
+    expression: "0.03"
+  smart_init: false
+  consistency_solver: "cg"
+  fbp_relaxation: 1.0
+
+ct_lamp_3m:
+  num_steps: 50
+  eta_scale: 10.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  cg_early_stop: false
+  warmup_steps: 3
+  correction_scale: -2.0
+  correction_scale_a2: 3.0
+  smart_init: false
+  consistency_solver: "cg"
+  fbp_relaxation: 1.0
+
+dps:
+  num_steps: 50
+  scale: 0.3
+  smart_init: false
+
+ps_plus:
+  num_steps: 50
+  zeta: 10.0
+  grad_clip: 1.0
+  smart_init: true
+  num_sampling: 5
+  noise_std: 0.05
+
+diffpir:
+  num_steps: 10
+  lambda_data: 7.0
+  zeta: 0.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  smart_init: true

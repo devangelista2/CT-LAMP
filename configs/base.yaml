@@ -1,0 +1,137 @@
+experiment:
+  name: "ct_lamp_mayo_sparse_ct"
+  seed: 42
+  device: "auto"
+
+model:
+  backend: "monai"
+  checkpoint_path: "ct_lamp/checkpoints/rd_dgp_monai_finetuned_best.pth"
+  model_config_path: "configs/rd_dgp_monai_unet.yaml"
+  dtype: "float32"
+
+scheduler:
+  num_train_timesteps: 1000
+  beta_start: 0.0001
+  beta_end: 0.02
+  beta_schedule: "linear"
+  clip_sample: false
+
+data:
+  source: "mayo"
+  root_dir: "../data/Mayo"
+  split: "test"
+  case_ids: []
+  image_size: 256
+  num_images: 4
+  start_idx: 0
+  num_channels: 1
+
+operator:
+  # Sparse-view parallel-beam CT in physical units.
+  # The diffusion model uses images in [-1, 1], but the CT operator acts on [0, 1].
+  # noise_sigma is therefore expressed in raw sinogram units, not image units.
+  num_angles: 64
+  det_count: 256
+  start_angle: 0.0
+  end_angle: 3.141592653589793
+  noise_sigma: 0.01
+
+sampling:
+  num_steps: 50
+  clip_x0: true
+
+sirt:
+  num_iters: 50
+
+score_sde:
+  num_steps: 50
+  # The original score-SDE inverse-problem samplers assume a continuous
+  # score-SDE prior. With the current VP epsilon-prediction MONAI model,
+  # deterministic updates are noticeably more stable.
+  corrector_steps: 0
+  snr: 0.15
+  guidance_scale: 10.0
+  grad_clip: 50.0
+  smart_init: true
+
+mcg:
+  num_steps: 50
+  # MCG is also adapted heuristically to the local VP prior, so we keep the
+  # manifold term conservative to avoid harming the reconstruction.
+  corrector_steps: 0
+  snr: 0.15
+  kaczmarz_start: 10.0
+  kaczmarz_end: 10.0
+  manifold_weight: 0.001
+  grad_clip: 50.0
+  smart_init: true
+
+ddnm_plus:
+  num_steps: 50
+  # Tuned for CT physical-space consistency where K(x) and K^T K(x)
+  # are much larger than image-domain values.
+  eta_scale: 15.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  cg_early_stop: false
+  smart_init: false
+  consistency_solver: "cg"
+  fbp_relaxation: 1.0
+
+ct_lamp:
+  num_steps: 50
+  # Main CT-LAMP hyperparameter: a negative gamma induces lagged drift.
+  # If beta_schedule is set, it overrides gamma and directly defines beta_t.
+  eta_scale: 15.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  cg_early_stop: false
+  warmup_steps: 0
+  gamma: -0.5
+  # beta_schedule:
+  #   kind: "expression"
+  #   expression: "0.03"
+  smart_init: false
+  consistency_solver: "cg"
+  fbp_relaxation: 1.0
+
+ct_lamp_3m:
+  num_steps: 50
+  eta_scale: 10.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  cg_early_stop: false
+  warmup_steps: 3
+  correction_scale: -2.0
+  correction_scale_a2: 1.0
+  smart_init: true
+  consistency_solver: "cg"
+  fbp_relaxation: 1.0
+
+dps:
+  num_steps: 50
+  # Original DPS structure with a CT forward projector in the likelihood term.
+  scale: 0.3
+  smart_init: false
+
+ps_plus:
+  num_steps: 50
+  zeta: 10.0
+  grad_clip: 1.0
+  smart_init: true
+  num_sampling: 5
+  noise_std: 0.05
+
+diffpir:
+  # DiffPIR now follows the official data-prox formulation, which works well
+  # on a short sqrt-spaced schedule.
+  num_steps: 10
+  lambda_data: 7.0
+  zeta: 0.0
+  cg_iters: 16
+  cg_tol: 1.0e-5
+  smart_init: true
+
+output:
+  base_dir: "outputs"
+  log_level: "INFO"
