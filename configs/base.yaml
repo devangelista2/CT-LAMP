@@ -68,45 +68,52 @@ mcg:
 
 ddnm_plus:
   num_steps: 50
-  # Tuned for CT physical-space consistency where K(x) and K^T K(x)
-  # are much larger than image-domain values.
-  eta_scale: 15.0
-  cg_iters: 16
-  cg_tol: 1.0e-5
-  cg_early_stop: false
+  pinv_solver: "cgls"
+  cgls_iters: 16
+  cgls_tol: 1.0e-5
+  cgls_early_stop: false
+  eta: 0.0
+  time_travel:
+    enabled: false
+    travel_length: 1
+    travel_repeat: 1
   smart_init: false
-  consistency_solver: "cg"
-  fbp_relaxation: 1.0
 
 ct_lamp:
   num_steps: 50
   # Main CT-LAMP hyperparameter: a negative gamma induces lagged drift.
   # If beta_schedule is set, it overrides gamma and directly defines beta_t.
-  eta_scale: 15.0
-  cg_iters: 16
-  cg_tol: 1.0e-5
-  cg_early_stop: false
+  pinv_solver: "cgls"
+  cgls_iters: 16
+  cgls_tol: 1.0e-5
+  cgls_early_stop: false
+  eta: 0.0
   warmup_steps: 0
   gamma: -0.5
+  time_travel:
+    enabled: false
+    travel_length: 1
+    travel_repeat: 1
   # beta_schedule:
   #   kind: "expression"
   #   expression: "0.03"
   smart_init: false
-  consistency_solver: "cg"
-  fbp_relaxation: 1.0
 
 ct_lamp_3m:
   num_steps: 50
-  eta_scale: 10.0
-  cg_iters: 16
-  cg_tol: 1.0e-5
-  cg_early_stop: false
+  pinv_solver: "cgls"
+  cgls_iters: 16
+  cgls_tol: 1.0e-5
+  cgls_early_stop: false
+  eta: 0.0
   warmup_steps: 3
   correction_scale: -2.0
   correction_scale_a2: 1.0
+  time_travel:
+    enabled: false
+    travel_length: 1
+    travel_repeat: 1
   smart_init: true
-  consistency_solver: "cg"
-  fbp_relaxation: 1.0
 
 dps:
   num_steps: 50

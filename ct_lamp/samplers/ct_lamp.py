@@ -27,6 +27,7 @@ class CTLAMPSampler(DDNMPlusSampler):
 
     def __init__(self, model, operator, cfg: dict) -> None:
         super().__init__(model, operator, cfg)
+        self.method_name = "ct_lamp"
         method_cfg = cfg.get("ct_lamp", {})
         if "num_steps" in method_cfg:
             self.num_steps = int(method_cfg["num_steps"])
@@ -146,7 +147,7 @@ class CTLAMPSampler(DDNMPlusSampler):
             a1 = 1.0 - (1.0 + h) * math.exp(-h)
             return self._beta_from_gamma(a1=a1, h_prev=h_prev)
 
-        frac = 0.0 if self.num_steps <= 1 else step_idx / max(self.num_steps - 1, 1)
+        frac = 0.0 if self.num_steps <= 1 else min(step_idx / max(self.num_steps - 1, 1), 1.0)
         return float(
             self.beta_schedule(
                 t=float(t_cur),
@@ -174,8 +175,6 @@ class CTLAMPSampler(DDNMPlusSampler):
         with torch.no_grad():
             eps, x0_hat = self._tweedie(x_t, t_cur)
 
-            alpha_s = self.ns.get_alpha(t_cur)
-            sigma_s = self.ns.get_sigma(t_cur)
             alpha_t = self.ns.get_alpha(t_prev)
             sigma_t = self.ns.get_sigma(t_prev)
             h = self.ns.get_lambda(t_prev) - self.ns.get_lambda(t_cur)
@@ -183,8 +182,7 @@ class CTLAMPSampler(DDNMPlusSampler):
             d_cur, residual_norm = self.correct_x0(
                 x0_hat=x0_hat,
                 measurement=measurement,
-                alpha_s=alpha_s,
-                sigma_s=sigma_s,
+                alpha_prev=alpha_t,
             )
 
             x_prev = alpha_t * d_cur + sigma_t * eps
@@ -211,4 +209,12 @@ class CTLAMPSampler(DDNMPlusSampler):
         state["h_prev"] = float(h.item() if isinstance(h, torch.Tensor) else h)
         state["step_idx"] = int(state.get("step_idx", 0)) + 1
         state["residual"] = residual_norm
+        state["x0_hat"] = x0_hat.detach()
         return x_prev, state
+
+    def _reset_time_travel_state(self, state: dict) -> dict:
+        """Discard multistep memory across a DDNM-style time-travel restart."""
+        state = dict(state)
+        for key in ("d_prev", "h_prev", "beta_t"):
+            state.pop(key, None)
+        return state

@@ -215,6 +215,7 @@ class PosteriorSamplerBase(CTSamplerBase):
         x0_hat: torch.Tensor,
         measurement: torch.Tensor,
         t_cur: int,
+        t_prev: int,
         state: dict,
     ) -> tuple[torch.Tensor, float]:
         """Return the corrected image estimate D_cur and a residual statistic."""
@@ -245,6 +246,7 @@ class PosteriorSamplerBase(CTSamplerBase):
                 x0_hat=x0_hat,
                 measurement=measurement,
                 t_cur=t_cur,
+                t_prev=t_prev,
                 state=state,
             )
             x_prev = self.posterior_update(
@@ -255,4 +257,5 @@ class PosteriorSamplerBase(CTSamplerBase):
 
         state["residual"] = residual_norm
         state["d_cur"] = d_cur.detach()
+        state["x0_hat"] = x0_hat.detach()
         return x_prev, state

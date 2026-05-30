@@ -67,6 +67,98 @@ uv run python scripts/generate_grid.py \
   --output outputs/sample_grid.png
 ```
 
+## CT-LAMP beta schedule expression
+
+`ct_lamp` supports two equivalent lag parameterizations:
+
+- `ct_lamp.gamma`: a fixed lag strength
+- `ct_lamp.beta_schedule`: a direct specification of `beta_t`
+
+If `beta_schedule` is set, it overrides `gamma`.
+
+The most flexible option is:
+
+```yaml
+ct_lamp:
+  beta_schedule:
+    kind: "expression"
+    expression: "0.03"
+```
+
+The `expression` string is evaluated at every reverse step and must return a single numeric value,
+which is used as the current `beta_t` in
+
+```text
+D_tilde = (1 - beta_t) * D_cur + beta_t * D_prev
+```
+
+The following variables are available inside the expression:
+
+- `t`, `t_cur`: current reverse timestep
+- `t_prev`: next reverse timestep after the update
+- `step_idx`: zero-based reverse-step index
+- `num_steps`: total configured number of reverse steps
+- `frac`: normalized step position in `[0, 1]`
+- `h`: current log-SNR gap `lambda(t_prev) - lambda(t_cur)`
+- `h_prev`: previous log-SNR gap
+- `lambda_cur`, `lambda_prev`: current and next log-SNR values
+- `gamma`: the configured `ct_lamp.gamma` value
+
+The following functions/constants are available:
+
+- `abs`, `min`, `max`
+- `sqrt`, `exp`, `log`
+- `sin`, `cos`, `tan`
+- `pi`
+
+Examples:
+
+```yaml
+ct_lamp:
+  beta_schedule:
+    kind: "expression"
+    expression: "0.03"
+```
+
+Constant lagged averaging.
+
+```yaml
+ct_lamp:
+  beta_schedule:
+    kind: "expression"
+    expression: "0.01 + 0.04 * frac"
+```
+
+Linearly increases `beta_t` during sampling.
+
+```yaml
+ct_lamp:
+  beta_schedule:
+    kind: "expression"
+    expression: "min(0.05, 0.5 * h / max(h_prev, 1e-8))"
+```
+
+Makes `beta_t` depend on the ratio between consecutive log-SNR gaps.
+
+```yaml
+ct_lamp:
+  beta_schedule:
+    kind: "expression"
+    expression: "0.03 * (1 + cos(pi * frac)) / 2"
+```
+
+Starts larger and decays smoothly toward zero.
+
+Use CLI overrides as usual, for example:
+
+```bash
+uv run python scripts/run.py \
+  --config configs/mayo_sparse_ct.yaml \
+  --method ct_lamp \
+  'ct_lamp.beta_schedule.kind=expression' \
+  'ct_lamp.beta_schedule.expression=min(0.05, 0.01 + 0.04 * frac)'
+```
+
 ## Notes
 
 - Main config: `configs/base.yaml`

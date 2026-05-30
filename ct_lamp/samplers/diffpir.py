@@ -110,6 +110,7 @@ class DiffPIRSampler(PosteriorSamplerBase):
         x0_hat: torch.Tensor,
         measurement: torch.Tensor,
         t_cur: int,
+        t_prev: int,
         state: dict,
     ) -> tuple[torch.Tensor, float]:
         return self._prox_step(
